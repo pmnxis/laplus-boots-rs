@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: © 2023 Jinwoo Park (pmnxis@gmail.com)
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# [Mass Production Reminder]
+# To address supply availability and cost reduction,
+# it is possible to switch to STM32G030C6Tx.
+# However, please note that currently, in the debug build, the flash section exceeds 32KB.
+# Therefore, this change will be applicable only for production use,
+# considering its benefits in the release build.
+# runner = "probe-run --chip STM32G030C8Tx --host-log-format \"{t} [{L}] {f}:{l} {s}\""
+runner = [
+  "probe-run",
+  "--chip",
+  "STM32G030C8Tx",
+  "--log-format",
+  "{t} [{L}][ {f}:{l} ] {s}",
+]
+
+[build]
+target = "thumbv6m-none-eabi"
+
+# As described in the `Cargo.toml` located in the root directory of the project,
+# in order to maintain a separation between the NDA code and open-source code,
+# the project follows a re-patching approach for incorporating the library source code
+# from the local environment into the actual open-source build.
+
+# Custom println! To use formatting, use the latest branch.
+# [patch.crates-io]
+# defmt = { git = "https://github.com/knurling-rs/defmt.git", rev = "ca161bf0ab9ea8209fa5b6781e9f4e87f592eb57" }
+# defmt-test = { git = "https://github.com/knurling-rs/defmt.git", rev = "ca161bf0ab9ea8209fa5b6781e9f4e87f592eb57" }
+# defmt-rtt = { git = "https://github.com/knurling-rs/defmt.git", rev = "ca161bf0ab9ea8209fa5b6781e9f4e87f592eb57" }
