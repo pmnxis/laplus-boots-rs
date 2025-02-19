@@ -8,10 +8,9 @@ use core::cell::UnsafeCell;
 
 use chacha20::{cipher::KeyIvInit, ChaCha20};
 use embassy_stm32::crc::Crc;
-use embassy_stm32::dma::NoDma;
 use embassy_stm32::flash::FlashLayout;
 use embassy_stm32::peripherals;
-use embassy_stm32::usart::{UartRx, UartTx};
+use embassy_stm32::usart::{BufferedUartRx, BufferedUartTx};
 
 // #[cfg(feature = "hw_0v2")]
 // use self::billmock_0v2::hardware_init_0v2;
@@ -31,8 +30,8 @@ pub mod const_str;
 pub struct Hardware<'s> {
     pub crc: UnsafeCell<Crc<'static>>,
     pub flash: UnsafeCell<FlashLayout<'s, embassy_stm32::flash::Blocking>>,
-    pub tx: UnsafeCell<UartTx<'static, peripherals::USART2, NoDma>>,
-    pub rx: UnsafeCell<UartRx<'static, peripherals::USART2, NoDma>>,
+    pub tx: UnsafeCell<BufferedUartTx<'static, peripherals::USART2>>,
+    pub rx: UnsafeCell<BufferedUartRx<'static, peripherals::USART2>>,
 }
 
 impl Hardware<'static> {
