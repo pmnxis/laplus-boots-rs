@@ -15,8 +15,8 @@ use embassy_stm32::usart::{BufferedUartRx, BufferedUartTx};
 // #[cfg(feature = "hw_0v2")]
 // use self::billmock_0v2::hardware_init_0v2;
 #[cfg(feature = "hw_billmock_mini_0v5")]
-use self::billmock_mini_0v5::hardware_specific_init;
-use crate::make_static;
+use self::billmock_mini_0v5::*;
+use crate::types::section_mark::SectionMark;
 
 // #[cfg(feature = "hw_0v2")]
 // mod billmock_0v2;
@@ -42,27 +42,25 @@ impl Hardware<'static> {
 
     /// Initialize MCU peripherals and nearby components
     #[inline]
-    fn hardware_init<'s>(
-        peripherals: embassy_stm32::Peripherals,
-        shared_resource: &'static SharedResource,
-    ) -> Hardware<'s> {
-        hardware_specific_init(peripherals, shared_resource)
+    fn hardware_init<'s>(peripherals: embassy_stm32::Peripherals) -> Hardware<'s> {
+        hardware_specific_init(peripherals)
     }
 }
 
 pub struct SharedResource {
-    pub cipher: UnsafeCell<ChaCha20>,
+    pub cipher: ChaCha20,
+    pub section_mark: SectionMark,
 }
 
 impl SharedResource {
     /// Initialize necessary shared resource
     fn init() -> Self {
         let key = [0x42; 32]; // fill any key.
-        let nonce = [0x24; 12]; // fill any nonce by some condition.
-        let cipher = ChaCha20::new(&key.into(), &nonce.into());
+        let nonce = crypto_nonce();
 
         Self {
-            cipher: UnsafeCell::new(cipher),
+            cipher: ChaCha20::new(&key.into(), &nonce.into()),
+            section_mark: SectionMark::new(),
         }
     }
 }
@@ -70,19 +68,27 @@ impl SharedResource {
 #[allow(dead_code)]
 pub struct Board<'s> {
     pub hardware: Hardware<'s>,
-    pub shared_resource: &'static SharedResource,
+    pub shared_resource: SharedResource,
 }
 
 impl Board<'static> {
     pub fn init() -> Self {
         let peripherals = Hardware::mcu_pre_init();
 
-        let shared_resource = make_static!(SharedResource, SharedResource::init());
-        let hardware: Hardware = Hardware::hardware_init(peripherals, shared_resource);
+        let hardware: Hardware = Hardware::hardware_init(peripherals);
+        let shared_resource = SharedResource::init();
 
         Self {
             hardware,
             shared_resource,
         }
+    }
+
+    pub fn get_nonce() -> [u8; 12] {
+        crypto_nonce()
+    }
+
+    pub fn get_serial_number() -> [u8; 12] {
+        serial_number()
     }
 }

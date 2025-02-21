@@ -12,10 +12,49 @@ use mp_fingerprint_type::{FirmwareFingerprint, MpFingerprint};
 
 const IGNORE_PATH_DEP_INJ: &str = ".cargo/config.toml";
 
+fn parse_memory_size(s: &str) -> Option<u32> {
+    let re = regex::bytes::Regex::new(r"//.*|/\*.*?\*/").unwrap();
+    let s = re.replace_all(s.as_bytes(), "".as_bytes());
+    let s = std::str::from_utf8(&s).expect("Unknown UTF8").trim();
+
+    if let Some(hex) = s.strip_prefix("0x") {
+        u32::from_str_radix(hex, 16).ok()
+    } else if let Some(dec) = s.strip_suffix('K') {
+        println!("{}", dec);
+        dec.parse::<u32>().ok().map(|v| v * 1024)
+    } else if let Some(dec) = s.strip_suffix('M') {
+        dec.parse::<u32>().ok().map(|v| v * 1024 * 1024)
+    } else {
+        s.parse::<u32>().ok()
+    }
+}
+
 fn main() -> Result<(), Error> {
     println!("cargo:rustc-link-arg-bins=--nmagic");
     println!("cargo:rustc-link-arg-bins=-Tlink.x");
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
+
+    // Read Memory X
+    let memory_x = std::fs::read_to_string("memory.x").expect("Failed to read memory.x");
+
+    let flash_origin = memory_x
+        .lines()
+        .find(|line| line.contains("FLASH"))
+        .and_then(|line| line.split("ORIGIN = ").nth(1))
+        .and_then(|s| s.split(',').next())
+        .and_then(|s| parse_memory_size(s))
+        .expect("Failed to find delimiter next to FLASH ORIGIN");
+
+    let flash_length = memory_x
+        .lines()
+        .find(|line| line.contains("FLASH"))
+        .and_then(|line| line.split("LENGTH = ").nth(1))
+        .and_then(|s| parse_memory_size(s))
+        .expect("Failed to parse FLASH LENGTH");
+
+    // Set FLASH_ORIGIN and LENGTH
+    println!("cargo:rustc-env=FLASH_ORIGIN={}", flash_origin);
+    println!("cargo:rustc-env=FLASH_LENGTH={}", flash_length);
 
     // Get project name and version
     let metadata = MetadataCommand::new().no_deps().exec()?;

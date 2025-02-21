@@ -18,7 +18,7 @@ use embassy_stm32::flash::Flash;
 use embassy_stm32::usart::BufferedUart;
 use embassy_stm32::{bind_interrupts, peripherals};
 
-use super::{Hardware, SharedResource};
+use super::Hardware;
 
 bind_interrupts!(struct Irqs {
     USART2 => embassy_stm32::usart::BufferedInterruptHandler<peripherals::USART2>; // InterruptHandler
@@ -27,10 +27,7 @@ bind_interrupts!(struct Irqs {
 static mut UART_RX_BUF: [u8; 1024] = [0u8; 1024];
 static mut UART_TX_BUF: [u8; 512] = [0u8; 512];
 
-pub fn hardware_specific_init<'s>(
-    p: embassy_stm32::Peripherals,
-    _shared_resource: &'static SharedResource,
-) -> Hardware<'s> {
+pub fn hardware_specific_init<'s>(p: embassy_stm32::Peripherals) -> Hardware<'s> {
     // USART2 initialization for CardReaderDevice
     let usart_rx_buf = unsafe { &mut *core::ptr::addr_of_mut!(UART_RX_BUF) };
     let usart_tx_buf = unsafe { &mut *core::ptr::addr_of_mut!(UART_TX_BUF) };
@@ -64,4 +61,13 @@ pub fn hardware_specific_init<'s>(
         rx: UnsafeCell::new(rx),
         tx: UnsafeCell::new(tx),
     }
+}
+
+pub(crate) fn serial_number() -> [u8; 12] {
+    billmock_otp_dev_info::OtpDeviceInfo::from_stm32g0().dev_sn
+}
+
+pub(crate) fn crypto_nonce() -> [u8; 12] {
+    // Use RNG when HW support it
+    serial_number()
 }
