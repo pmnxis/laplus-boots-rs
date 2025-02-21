@@ -30,6 +30,11 @@ use panic_abort as _;
 use crate::boards::Board;
 use crate::types::ota::*;
 
+pub enum Key<'d> {
+    Tx(&'d [u8]),
+    TxAndReset(&'d [u8]),
+}
+
 #[entry]
 fn main() -> ! {
     let board = make_static!(Board, boards::Board::init());
@@ -42,26 +47,27 @@ fn main() -> ! {
         let _n = rx.read(&mut rx_buf);
 
         if let Ok(cmd) = crate::types::ota::test_packet(&rx_buf) {
-            match cmd {
-                RequestForm::Handshake => {
-                    let _ = tx.write(as_bytes!(&HandshakeForm::response_new()));
-                }
-                RequestForm::DeviceInfo => {
-                    let _ = tx.write(as_bytes!(&DeviceInfoResponseForm::new(board)));
-                }
+            let key = match cmd {
+                RequestForm::Handshake => Key::Tx(as_bytes!(&HandshakeForm::response_new())),
+                RequestForm::DeviceInfo => Key::Tx(as_bytes!(&DeviceInfoResponseForm::new(board))),
                 RequestForm::StartUpdate => {
-                    let _ = tx.write(as_bytes!(&StartUpdateResponseForm::new(board)));
+                    Key::Tx(as_bytes!(&StartUpdateResponseForm::new(board)))
                 }
-                RequestForm::WriteChunk(chunk) => {
-                    let _ = tx.write(as_bytes!(&WriteChunkResponseForm::new(
-                        chunk.try_flash(board)
-                    )));
-                }
+                RequestForm::WriteChunk(chunk) => Key::Tx(as_bytes!(&WriteChunkResponseForm::new(
+                    chunk.try_flash(board)
+                ))),
                 RequestForm::UpdateStatus => {
-                    let _ = tx.write(as_bytes!(&UpdateStatusResponseForm::new(board)));
+                    Key::Tx(as_bytes!(&UpdateStatusResponseForm::new(board)))
                 }
-                RequestForm::Reset => {
-                    let _ = tx.write(as_bytes!(&ResetForm::response_new()));
+                RequestForm::Reset => Key::TxAndReset(as_bytes!(&ResetForm::response_new())),
+            };
+
+            match key {
+                Key::Tx(x) => {
+                    let _ = tx.write(x);
+                }
+                Key::TxAndReset(x) => {
+                    let _ = tx.write(x);
                     cortex_m::peripheral::SCB::sys_reset();
                 }
             }
