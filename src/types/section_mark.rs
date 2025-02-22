@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
-const BOOTLOADER_ORIGIN: usize = env_to_array::hex_env_to_usize!("FLASH_ORIGIN");
+pub(crate) const BOOTLOADER_ORIGIN: usize = env_to_array::hex_env_to_usize!("FLASH_ORIGIN");
 const BOOTLOADER_LENGTH: usize = env_to_array::hex_env_to_usize!("FLASH_LENGTH");
 const FLASH_BASE: usize = embassy_stm32::flash::FLASH_BASE;
 const FLASH_SIZE: usize = embassy_stm32::flash::FLASH_SIZE;
 
-const REMAIN_OFFSET: usize = BOOTLOADER_ORIGIN + BOOTLOADER_LENGTH - FLASH_BASE;
+pub const REMAIN_OFFSET: usize = BOOTLOADER_ORIGIN + BOOTLOADER_LENGTH - FLASH_BASE;
 const REMAIN_SIZE: usize = FLASH_SIZE - REMAIN_OFFSET;
 
 pub const WRITE_CHUNK_SIZE: usize = 256;

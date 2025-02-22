@@ -42,14 +42,14 @@ fn main() -> Result<(), Error> {
         .find(|line| line.contains("FLASH"))
         .and_then(|line| line.split("ORIGIN = ").nth(1))
         .and_then(|s| s.split(',').next())
-        .and_then(|s| parse_memory_size(s))
+        .and_then(parse_memory_size)
         .expect("Failed to find delimiter next to FLASH ORIGIN");
 
     let flash_length = memory_x
         .lines()
         .find(|line| line.contains("FLASH"))
         .and_then(|line| line.split("LENGTH = ").nth(1))
-        .and_then(|s| parse_memory_size(s))
+        .and_then(parse_memory_size)
         .expect("Failed to parse FLASH LENGTH");
 
     // Set FLASH_ORIGIN and LENGTH

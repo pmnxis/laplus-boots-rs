@@ -20,14 +20,14 @@ hw_billmock_mini_0v5 = []
 
 [dependencies]
 embassy-stm32 = { version = "0.1.0", features = ["time-driver-any", "stm32g030c8", "memory-x", "unstable-pac", "exti", "time"] } # "unstable-traits" for use InputPin trait for gpio
+embassy-time = { version = "0.3.2", features = ["tick-hz-32_768"] }
 embedded-hal = "1.0.0"
 panic-abort = "0.3.2"
 cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"] }
 cortex-m-rt = "0.7.5"
 static_assertions = "1.1.0"
 static_cell = { version = "1.3", features = ["nightly"] }
-# env_to_array = { git = "https://github.com/pmnxis/env-to-array.git", branch = "dynamic_array_patch", features = ["hex"] }
-env_to_array = { path = "../env-to-array" }
+env_to_array = { git = "https://github.com/pmnxis/env-to-array.git", branch = "dynamic_array_patch", features = ["hex"] }
 chacha20 = "0.9.1"
 embedded-io = "0.6.1"
 
@@ -38,7 +38,7 @@ embedded-io = "0.6.1"
 # details : https://doc.rust-lang.org/cargo/reference/overriding-dependencies.html#the-patch-section
 
 billmock-otp-dev-info = { git = "https://github.com/pmnxis/billmock-mptool.git" }
-hex-literal = "0.4.1"
+crc = "3.2"
 
 [build-dependencies]
 git2 = "0.20" # Git library for Rust

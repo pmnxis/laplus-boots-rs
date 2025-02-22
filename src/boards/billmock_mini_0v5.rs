@@ -12,9 +12,7 @@ use core::cell::UnsafeCell;
 
 use embassy_stm32::crc::{self, Crc};
 use embassy_stm32::flash::Flash;
-// use embassy_stm32::flash::FlashLayout;
-// use embassy_stm32::gpio::{Input, Level, Output, Pin, Pull, Speed};
-// use embassy_stm32::time::Hertz;
+use embassy_stm32::gpio::{Input, Pin, Pull};
 use embassy_stm32::usart::BufferedUart;
 use embassy_stm32::{bind_interrupts, peripherals};
 
@@ -28,12 +26,21 @@ static mut UART_RX_BUF: [u8; 1024] = [0u8; 1024];
 static mut UART_TX_BUF: [u8; 512] = [0u8; 512];
 
 pub fn hardware_specific_init<'s>(p: embassy_stm32::Peripherals) -> Hardware<'s> {
+    let delay = cortex_m::delay::Delay::new(
+        unsafe { cortex_m::Peripherals::steal().SYST },
+        embassy_stm32::rcc::HSI_FREQ.0,
+    );
+
     // USART2 initialization for CardReaderDevice
     let usart_rx_buf = unsafe { &mut *core::ptr::addr_of_mut!(UART_RX_BUF) };
     let usart_tx_buf = unsafe { &mut *core::ptr::addr_of_mut!(UART_TX_BUF) };
 
-    let crc_config =
-        crc::Config::new(crc::InputReverseConfig::Word, false, 0xA097).unwrap_or_else(|_| panic!());
+    let crc_config = crc::Config::new(
+        crc::InputReverseConfig::Word,
+        false,
+        crate::types::CRC_POLY_INIT,
+    )
+    .unwrap_or_else(|_| panic!());
 
     let usart2_config = {
         let mut ret = embassy_stm32::usart::Config::default();
@@ -55,11 +62,15 @@ pub fn hardware_specific_init<'s>(p: embassy_stm32::Peripherals) -> Hardware<'s>
     .unwrap_or_else(|_| panic!())
     .split();
 
+    let force_bootloader = Input::new(p.PC6.degrade(), Pull::Up);
+
     Hardware {
+        delay: UnsafeCell::new(delay),
         crc: UnsafeCell::new(Crc::new(p.CRC, crc_config)),
         flash: UnsafeCell::new(Flash::new_blocking(p.FLASH).into_blocking_regions()),
         rx: UnsafeCell::new(rx),
         tx: UnsafeCell::new(tx),
+        force_bootloader: UnsafeCell::new(force_bootloader),
     }
 }
 

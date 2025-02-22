@@ -9,6 +9,7 @@ use core::cell::UnsafeCell;
 use chacha20::{cipher::KeyIvInit, ChaCha20};
 use embassy_stm32::crc::Crc;
 use embassy_stm32::flash::FlashLayout;
+use embassy_stm32::gpio::{AnyPin, Input};
 use embassy_stm32::peripherals;
 use embassy_stm32::usart::{BufferedUartRx, BufferedUartTx};
 
@@ -28,10 +29,12 @@ pub mod const_str;
 
 #[allow(dead_code)]
 pub struct Hardware<'s> {
+    pub delay: UnsafeCell<cortex_m::delay::Delay>,
     pub crc: UnsafeCell<Crc<'static>>,
     pub flash: UnsafeCell<FlashLayout<'s, embassy_stm32::flash::Blocking>>,
     pub tx: UnsafeCell<BufferedUartTx<'static, peripherals::USART2>>,
     pub rx: UnsafeCell<BufferedUartRx<'static, peripherals::USART2>>,
+    pub force_bootloader: UnsafeCell<Input<'static, AnyPin>>,
 }
 
 impl Hardware<'static> {

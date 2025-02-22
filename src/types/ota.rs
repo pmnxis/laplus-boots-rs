@@ -35,6 +35,7 @@ pub enum Command {
     WriteChunk = 0x40,
     UpdateStatus = 0xE0,
     Reset = 0xF0,
+    JumpToApplication = 0xF1,
 }
 
 impl TryFrom<u8> for Command {
@@ -60,6 +61,7 @@ pub enum RequestForm<'a> {
     WriteChunk(&'a WriteChunkRequestForm),
     UpdateStatus,
     Reset,
+    JumpToApplication,
 }
 
 impl RequestForm<'_> {
@@ -71,6 +73,7 @@ impl RequestForm<'_> {
             Command::WriteChunk => Self::WriteChunk(&*(arr.as_ptr() as *const _)),
             Command::UpdateStatus => Self::UpdateStatus,
             Command::Reset => Self::Reset,
+            Command::JumpToApplication => Self::JumpToApplication,
         }
     }
 }
@@ -116,6 +119,7 @@ const fn request_packet_size(command: Command) -> usize {
         Command::WriteChunk => core::mem::size_of::<WriteChunkRequestForm>(),
         Command::UpdateStatus => core::mem::size_of::<UpdateStatusRequestForm>(),
         Command::Reset => core::mem::size_of::<ResetForm>(),
+        Command::JumpToApplication => core::mem::size_of::<JumpToApplicationForm>(),
     }
 }
 
@@ -128,6 +132,7 @@ const fn response_packet_size(command: Command) -> usize {
         Command::WriteChunk => core::mem::size_of::<WriteChunkResponseForm>(),
         Command::UpdateStatus => core::mem::size_of::<UpdateStatusResponseForm>(),
         Command::Reset => core::mem::size_of::<ResetForm>(),
+        Command::JumpToApplication => core::mem::size_of::<JumpToApplicationForm>(),
     }
 }
 
@@ -245,9 +250,7 @@ impl DeviceInfoResponseForm {
         };
 
         crc.reset();
-        let checksum = crc.feed_bytes(&ret.checksum_source());
-
-        ret.checksum = (checksum as u16).to_le_bytes();
+        ret.checksum = (crc.feed_bytes(ret.checksum_source()) as u16).to_le_bytes();
 
         ret
     }
@@ -305,7 +308,6 @@ impl StartUpdateResponseForm {
 pub struct WriteChunkRequestForm {
     pub sof: Sof,
     pub command: Command,
-    pub length: u8,
     pub checksum: [u8; 2], // little endian
     pub offset: [u8; 4],   // little endian
     pub payload: [u8; WRITE_CHUNK_SIZE],
@@ -313,16 +315,36 @@ pub struct WriteChunkRequestForm {
 }
 
 impl WriteChunkRequestForm {
+    pub fn checksum_source(&self) -> &[u8] {
+        unsafe {
+            let start_ptr = &self.offset as *const u8;
+            let end_ptr = &self.eof as *const u8;
+
+            core::slice::from_raw_parts(start_ptr, end_ptr as usize - start_ptr as usize)
+        }
+    }
+
+    // #[cfg(any(not(feature = "no_std"), feature = "std", test))]
     #[allow(unused)]
-    pub fn new(offset: u32, bytes: &[u8]) -> Result<Self, OtaError> {
+    pub fn new_std(offset: u32, bytes: &[u8; WRITE_CHUNK_SIZE]) -> Result<Self, OtaError> {
         // if offset + bytes.len() as u32 > size {
         //     return Err(Error::Size);
         // }
         if offset % WRITE_SIZE as u32 != 0 || bytes.len() % WRITE_SIZE != 0 {
             return Err(OtaError::FlashUnaligned);
         }
+        let mut ret = Self {
+            sof: Sof::Request,
+            command: Command::WriteChunk,
+            checksum: [0; 2],
+            offset: offset.to_le_bytes(),
+            payload: *bytes,
+            eof: EOF_SIGNATURE,
+        };
 
-        unimplemented!()
+        ret.checksum = (crate::types::std_crc::std_crc(ret.checksum_source()) as u16).to_le_bytes();
+
+        Ok(ret)
     }
 
     pub(crate) fn try_flash(&self, board: &mut Board) -> Result<(), OtaError> {
@@ -334,8 +356,8 @@ impl WriteChunkRequestForm {
         let mut data = self.payload;
 
         crc.reset();
-        let _ = crc.feed_bytes(&self.offset);
-        let actual = crc.feed_bytes(&data) as u16;
+        let actual = crc.feed_bytes(self.checksum_source()) as u16;
+
         let expected = u16::from_le_bytes(self.checksum);
         if actual != expected {
             return Err(OtaError::ChecksumError);
@@ -442,6 +464,32 @@ impl ResetForm {
         Self {
             sof: Sof::Response,
             command: Command::Reset,
+            eof: EOF_SIGNATURE,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct JumpToApplicationForm {
+    pub sof: Sof,
+    pub command: Command,
+    pub eof: u8,
+}
+
+impl JumpToApplicationForm {
+    #[allow(unused)]
+    pub const fn request_new() -> Self {
+        Self {
+            sof: Sof::Request,
+            command: Command::JumpToApplication,
+            eof: EOF_SIGNATURE,
+        }
+    }
+
+    pub const fn response_new() -> Self {
+        Self {
+            sof: Sof::Response,
+            command: Command::JumpToApplication,
             eof: EOF_SIGNATURE,
         }
     }
