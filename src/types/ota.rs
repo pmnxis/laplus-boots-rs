@@ -14,17 +14,17 @@ use crate::Board;
 
 pub const EOF_SIGNATURE: u8 = 0xFF;
 pub const PROTOCOL_VERSION_BYTE: u8 = 0x01;
+pub const REASONABLE_TX_BUF: usize = (response_packet_max_size() + 15) / 8; // 8bytes padding
 
 #[macro_export]
-macro_rules! as_bytes {
-    ($val:expr) => {
+macro_rules! on_tx_buffer {
+    ($tx_buf:expr, $type:ty, $val:expr) => {{
+        #[allow(clippy::macro_metavars_in_unsafe)]
         unsafe {
-            core::slice::from_raw_parts(
-                ($val as *const _) as *const u8,
-                core::mem::size_of_val($val),
-            )
+            ($tx_buf.as_mut_ptr() as *mut $type).write($val);
         }
-    };
+        core::mem::size_of::<$type>()
+    }};
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -136,6 +136,22 @@ const fn response_packet_size(command: Command) -> usize {
         Command::Reset => core::mem::size_of::<ResetForm>(),
         Command::JumpToApplication => core::mem::size_of::<JumpToApplicationForm>(),
     }
+}
+
+const fn response_packet_max_size() -> usize {
+    const fn max(a: usize, b: usize) -> usize {
+        if a > b {
+            a
+        } else {
+            b
+        }
+    }
+    let mut ret = response_packet_size(Command::Handshake);
+    ret = max(ret, response_packet_size(Command::DeviceInfo));
+    ret = max(ret, response_packet_size(Command::StartUpdate));
+    ret = max(ret, response_packet_size(Command::WriteChunk));
+    ret = max(ret, response_packet_size(Command::UpdateStatus));
+    max(ret, response_packet_size(Command::Reset))
 }
 
 #[allow(unused)]

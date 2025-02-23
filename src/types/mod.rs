@@ -8,7 +8,6 @@ pub const CRC_POLY_INIT: u32 = 0xA097;
 pub const BOOTLOADER_KEY: u32 = 0xB00710AD; // BOOTLOAD
 
 pub mod const_convert;
-pub(crate) mod make_static;
 pub mod ota;
 pub mod section_mark;
 

@@ -28,14 +28,14 @@ pub mod const_str;
 #[allow(dead_code)]
 pub struct Hardware<'s> {
     pub delay: cortex_m::delay::Delay,
-    pub crc: Crc<'static>,
+    pub crc: Crc<'s>,
     pub flash: FlashLayout<'s, embassy_stm32::flash::Blocking>,
-    pub tx: BufferedUartTx<'static, peripherals::USART2>,
-    pub rx: BufferedUartRx<'static, peripherals::USART2>,
-    pub force_bootloader: Input<'static, AnyPin>,
+    pub tx: BufferedUartTx<'s, peripherals::USART2>,
+    pub rx: BufferedUartRx<'s, peripherals::USART2>,
+    pub force_bootloader: Input<'s, AnyPin>,
 }
 
-impl Hardware<'static> {
+impl Hardware<'_> {
     /// Initialize MCU PLL and CPU on init hardware
     pub fn mcu_pre_init() -> embassy_stm32::Peripherals {
         embassy_stm32::init(Default::default())

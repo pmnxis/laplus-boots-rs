@@ -66,8 +66,8 @@ pub fn hardware_specific_init<'s>(p: embassy_stm32::Peripherals) -> Hardware<'s>
         delay,
         crc: Crc::new(p.CRC, crc_config),
         flash: Flash::new_blocking(p.FLASH).into_blocking_regions(),
-        rx: rx,
-        tx: tx,
+        rx,
+        tx,
         force_bootloader,
     }
 }
