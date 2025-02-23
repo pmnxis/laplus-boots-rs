@@ -8,8 +8,6 @@
 //! The code follows on version mini 0.4 schematic
 //! https://github.com/pmnxis/BillMock-HW-RELEASE/blob/master/sch/BillMock-Mini-HW-0v5.pdf
 
-use core::cell::UnsafeCell;
-
 use embassy_stm32::crc::{self, Crc};
 use embassy_stm32::flash::Flash;
 use embassy_stm32::gpio::{Input, Pin, Pull};
@@ -65,12 +63,12 @@ pub fn hardware_specific_init<'s>(p: embassy_stm32::Peripherals) -> Hardware<'s>
     let force_bootloader = Input::new(p.PC6.degrade(), Pull::Up);
 
     Hardware {
-        delay: UnsafeCell::new(delay),
-        crc: UnsafeCell::new(Crc::new(p.CRC, crc_config)),
-        flash: UnsafeCell::new(Flash::new_blocking(p.FLASH).into_blocking_regions()),
-        rx: UnsafeCell::new(rx),
-        tx: UnsafeCell::new(tx),
-        force_bootloader: UnsafeCell::new(force_bootloader),
+        delay,
+        crc: Crc::new(p.CRC, crc_config),
+        flash: Flash::new_blocking(p.FLASH).into_blocking_regions(),
+        rx: rx,
+        tx: tx,
+        force_bootloader,
     }
 }
 

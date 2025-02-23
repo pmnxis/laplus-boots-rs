@@ -47,11 +47,6 @@ fn main() -> ! {
     let board = make_static!(Board, boards::Board::init());
     let mut rx_buf: [u8; 1024] = [0; 1024];
 
-    let delay = unsafe { &mut *board.hardware.delay.get() };
-    let rx = unsafe { &mut *board.hardware.rx.get() };
-    let tx = unsafe { &mut *board.hardware.tx.get() };
-    let force_pin = unsafe { &mut *board.hardware.force_bootloader.get() };
-
     let mut stacked: StackedBufferRxIndex = 0;
     let mut last_rx = Instant::now();
 
@@ -61,15 +56,15 @@ fn main() -> ! {
         unsafe { types::jump_to_app() }
     } else {
         for _ in 0..50 {
-            if force_pin.is_high() {
+            if board.hardware.force_bootloader.is_high() {
                 unsafe { types::jump_to_app() }
             }
-            delay.delay_ms(1);
+            board.hardware.delay.delay_ms(1);
         }
     }
 
     loop {
-        let rx_len = match rx.read(&mut rx_buf) {
+        let rx_len = match board.hardware.rx.read(&mut rx_buf) {
             Ok(0) => {
                 let now = Instant::now();
                 // when hang too much, just reset uart stacking
@@ -111,14 +106,14 @@ fn main() -> ! {
 
                 match key {
                     Key::Tx(x) => {
-                        let _ = tx.write(x);
+                        let _ = board.hardware.tx.write(x);
                     }
                     Key::TxAndReset(x) => {
-                        let _ = tx.write(x);
+                        let _ = board.hardware.tx.write(x);
                         cortex_m::peripheral::SCB::sys_reset();
                     }
                     Key::TxAndJump(x) => {
-                        let _ = tx.write(x);
+                        let _ = board.hardware.tx.write(x);
                         unsafe { types::jump_to_app() }
                     }
                 }

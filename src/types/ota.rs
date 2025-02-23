@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
+use core::borrow::BorrowMut;
+
 use chacha20::cipher::StreamCipher;
 use embassy_stm32::flash::WRITE_SIZE;
 
@@ -236,8 +238,8 @@ impl DeviceInfoResponseForm {
         }
     }
 
-    pub fn new(board: &Board) -> Self {
-        let crc = unsafe { &mut *board.hardware.crc.get() };
+    pub fn new(board: &mut Board) -> Self {
+        let crc = board.hardware.crc.borrow_mut();
 
         let mut ret = Self {
             sof: Sof::Response,
@@ -284,8 +286,8 @@ pub struct StartUpdateResponseForm {
 }
 
 impl StartUpdateResponseForm {
-    pub fn new(board: &Board) -> Self {
-        let crc = unsafe { &mut *board.hardware.crc.get() };
+    pub fn new(board: &mut Board) -> Self {
+        let crc = board.hardware.crc.borrow_mut();
 
         let mut ret = Self {
             sof: Sof::Response,
@@ -348,8 +350,8 @@ impl WriteChunkRequestForm {
     }
 
     pub(crate) fn try_flash(&self, board: &mut Board) -> Result<(), OtaError> {
-        let flash = unsafe { &mut *board.hardware.flash.get() };
-        let crc = unsafe { &mut *board.hardware.crc.get() };
+        let flash = board.hardware.flash.borrow_mut();
+        let crc = board.hardware.crc.borrow_mut();
         // let cipher = unsafe { &mut *board.shared_resource.cipher.get() };
         // let mut cipher = board.shared_resource;
 
@@ -423,8 +425,8 @@ pub struct UpdateStatusResponseForm {
 }
 
 impl UpdateStatusResponseForm {
-    pub fn new(board: &Board) -> Self {
-        let crc = unsafe { &mut *board.hardware.crc.get() };
+    pub fn new(board: &mut Board) -> Self {
+        let crc = board.hardware.crc.borrow_mut();
 
         let mut ret: Self = Self {
             sof: Sof::Response,
